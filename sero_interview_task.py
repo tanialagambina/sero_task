@@ -39,6 +39,7 @@ from urllib.request import urlopen
 import json
 import copy
 
+# Creating the results folder for any resulting figures to be saved
 cwd = os.getcwd()
 os.makedirs(os.path.dirname(cwd+'/Results/'), exist_ok=True)
 
@@ -79,7 +80,7 @@ def view_portfolio_map(cleaned_epc_data, energy_efficiency_col, *positional_para
                 depending on what you want to visualise
 
     OUTPUT:
-        - portfolio_fig: The map figure showing the landlord's portfolio
+        - fig: The map figure showing the landlord's portfolio
     """
     # Local authorities in the UK JSON found on Stack Overflow at
     # https://stackoverflow.com/questions/72972299/how-to-plot-a-plotly-choropleth-map-with-english-local-authorities-using-geojson
@@ -87,8 +88,7 @@ def view_portfolio_map(cleaned_epc_data, energy_efficiency_col, *positional_para
     with urlopen('https://raw.githubusercontent.com/thomasvalentine/Choropleth/main/Local_Authority_Districts_(December_2021)_GB_BFC.json') as response:
         local_authorities = json.load(response)
 
-    # Add in a test that the energy_rating_col is what is required for this,
-    # otherwise throw an error
+    # I want to add in a test here for the energy efficiency col!
 
     fig = px.choropleth_mapbox(
                                cleaned_epc_data,
@@ -204,9 +204,14 @@ def plot_scatter(cleaned_epc_data, x, y, hue, *positional_parameters, **keyword_
                 variable
         - hue: The column from the cleaned_epc_dataframe that will colour the
                 points on the scatter plot
+        (- save: Boolean, if True will save an output png in Results folder.
+                default False)
+        (- hue_order: The order of the legend labels)
+        (- colors: A list of hex code colours for the hue)
     """
     fig = plt.figure(figsize=(5, 5))
 
+    # Determining the colors of the points
     if ('colors' in keyword_parameters.keys()):
         colors = keyword_parameters['colors']
         if len(colors) > 1:
@@ -258,7 +263,10 @@ def property_focus_feature_analysis(
                 the analysis on
         (- percent_line: The cut off you wish you apply to get the selected top
                     /skewed properties for the feature. Default 0.5)
-
+        (- save: Boolean, if True will save an output png in Results folder.
+                default False)
+        (- address_col: The column in cleaned_epc_data that will be used as the
+                x axis to represent the individual properties. Default is 'address_col')
     OUTPUTS:
         - focus_properties_df: A shrunk down version of cleaned_epc_data that
                 only contains the properties which are skewed highly to the feature
@@ -272,6 +280,7 @@ def property_focus_feature_analysis(
     else:
         address_col = 'address'
 
+    # Ordering the data from largest to smallest
     feature_data = cleaned_epc_data[[address_col, feature_col]].sort_values(by=feature_col, ascending=False)
 
     if ('figsize' in keyword_parameters.keys()):
@@ -285,11 +294,14 @@ def property_focus_feature_analysis(
         y = np.cumsum(feature_data[feature_col]),
         color = 'black'
         )
+
+    # Adding in a line to show % of feature (y axis) to see how it corresponds
+    # to x axis to see how skewed the distribution of the feature is between
+    # properties
     if ('percent_line' in keyword_parameters.keys()):
         percent_line = keyword_parameters['percent_line']
     else:
         percent_line = 0.5
-
     plt.axhline(y=max(np.cumsum(feature_data[feature_col]))*percent_line, color='r', linestyle='--')
 
     plt.yticks(rotation='horizontal')
@@ -303,7 +315,10 @@ def property_focus_feature_analysis(
         if keyword_parameters['save'] is True:
             fig.savefig('Results/Cumulative Feature Plot', bbox_inches='tight')
 
-    # plt.show()
+    # Calculating the percentage of properties that correspond to the percentage
+    # of the feature. I.e. % of x given % of y. This helps to see how skewed the
+    # data is. If the feature is evenly distributed between properties,
+    # %x should be the same as %y
     percent_of_total = (sum(np.cumsum(feature_data[feature_col])<max(np.cumsum(feature_data[feature_col]))*percent_line)
      /len(np.cumsum(feature_data[feature_col])<max(np.cumsum(feature_data[feature_col]))*percent_line))*100
 
@@ -316,6 +331,8 @@ def property_focus_feature_analysis(
     else:
         print(conclusion_string)
 
+    # Taking the subset of cleaned_epc_data based on the percentage of the feature
+    # to investigate
     focus_properties_df = cleaned_epc_data.loc[np.cumsum(feature_data[feature_col])<max(np.cumsum(feature_data[feature_col]))*percent_line]
 
     return focus_properties_df
@@ -334,8 +351,7 @@ def get_recommendations(focus_properties_df):
     OUTPUTS:
         - f: The recommondations .txt file where all of the recommendations have been printed
     """
-    # Maybe check where the biggest cost savings could be between water, heating, etc
-    # focus_properties_df_single_glazed =
+    # Identifying properties with single glazing
     glazing_rec = focus_properties_df.loc[focus_properties_df.windows_description=='Single glazed']['address'].values
     with open("Results/Recommendations.txt", "w") as f:
         print('Only single glazing in:', file=f)
@@ -343,6 +359,7 @@ def get_recommendations(focus_properties_df):
         print('Consider double or triple glazing for greater efficiency', file=f)
         print(' ', file=f)
 
+    # Identifying properties in the subset list that dont have wall insulation
     walls_rec = focus_properties_df.loc[focus_properties_df.walls_description.str.contains('no insulation')]['address'].values
     with open("Results/Recommendations.txt", "a") as f:
         print('Walls not insulated in:', file=f)
@@ -350,6 +367,7 @@ def get_recommendations(focus_properties_df):
         print('Consider insulating walls for greater efficiency', file=f)
         print(' ', file=f)
 
+    # Identifying properties that dont have heatpumps
     heatpump_rec = focus_properties_df.loc[~focus_properties_df.mainheat_description.str.contains('heat pump')]['address'].values
     with open("Results/Recommendations.txt", "a") as f:
         print('No heat pumps in:', file=f)
@@ -357,6 +375,7 @@ def get_recommendations(focus_properties_df):
         print('Consider installing heat pumps for greater efficiency', file=f)
         print(' ', file=f)
 
+    # Identifying properties that have all or some low energy lighting
     lighting_rec = focus_properties_df.loc[~focus_properties_df.lighting_description.isin(['Low energy lighting in all fixed outlets'])]['address'].values
     with open("Results/Recommendations.txt", "a") as f:
         print('Some low energy lighting in:', file=f)
@@ -364,6 +383,7 @@ def get_recommendations(focus_properties_df):
         print('Consider low energy light sources throughout', file=f)
         print(' ', file=f)
 
+    # Identifying properties that dont have floor insulation
     floor_rec = focus_properties_df.loc[focus_properties_df.floor_description.str.contains('no insulation')]['address'].values
     with open("Results/Recommendations.txt", "a") as f:
         print('No floor insulation in:', file=f)
@@ -399,13 +419,13 @@ def make_cost_savings_report(epc_data, *positional_parameters, **keyword_paramet
 
     # EPC Rating colors
     colors = [
-    '#0A8647',
-    '#2EA949',
-    '#95CA53',
-    '#F1EC37',
-    '#F6AE35',
-    '#EF6F2E',
-    '#E92730'
+        '#0A8647',
+        '#2EA949',
+        '#95CA53',
+        '#F1EC37',
+        '#F6AE35',
+        '#EF6F2E',
+        '#E92730'
     ]
     hue_order = [
         'A',
@@ -417,6 +437,7 @@ def make_cost_savings_report(epc_data, *positional_parameters, **keyword_paramet
         'G'
     ]
 
+    # Run through analysis, and output and save plots
     cleaned_epc_data = clean_epc_data(epc_data);
     view_portfolio_map(
         cleaned_epc_data,
@@ -445,6 +466,7 @@ def make_cost_savings_report(epc_data, *positional_parameters, **keyword_paramet
             )
     recommendations = get_recommendations(focus_properties_df)
 
+    # Create the .pdf report
     from fpdf import FPDF
     class PDF(FPDF):
         def header(self):
