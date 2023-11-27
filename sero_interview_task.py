@@ -39,6 +39,9 @@ from urllib.request import urlopen
 import json
 import copy
 
+cwd = os.getcwd()
+os.makedirs(os.path.dirname(cwd+'/Results/'), exist_ok=True)
+
 def clean_epc_data(epc_data):
     """
     This function makes a few tweaks to clean up the epc_data downloaded from
@@ -108,7 +111,7 @@ def view_portfolio_map(cleaned_epc_data, energy_efficiency_col, *positional_para
 
     if ('save' in keyword_parameters.keys()):
         if keyword_parameters['save'] is True:
-            fig.write_image('{} Portfolio Map.png'.format(energy_efficiency_col))
+            fig.write_image('Results/{} Portfolio Map.png'.format(energy_efficiency_col))
 
     return fig
 
@@ -232,7 +235,7 @@ def plot_scatter(cleaned_epc_data, x, y, hue, *positional_parameters, **keyword_
 
     if ('save' in keyword_parameters.keys()):
         if keyword_parameters['save'] is True:
-            fig.savefig('{} vs {} Scatter Plot.png'.format(x, y))
+            fig.savefig('Results/{} vs {} Scatter Plot.png'.format(x, y))
 
 def property_focus_feature_analysis(
         cleaned_epc_data,
@@ -298,7 +301,7 @@ def property_focus_feature_analysis(
     fig = ax.get_figure()
     if ('save' in keyword_parameters.keys()):
         if keyword_parameters['save'] is True:
-            fig.savefig('Cumulative Feature Plot', bbox_inches='tight')
+            fig.savefig('Results/Cumulative Feature Plot', bbox_inches='tight')
 
     # plt.show()
     percent_of_total = (sum(np.cumsum(feature_data[feature_col])<max(np.cumsum(feature_data[feature_col]))*percent_line)
@@ -307,7 +310,7 @@ def property_focus_feature_analysis(
     conclusion_string = '{}% of the total {} across the whole portfolio is explained by only top {}% of the properties'.format(percent_line*100, feature_col, percent_of_total)
     if ('save' in keyword_parameters.keys()):
         if keyword_parameters['save'] is True:
-            with open("Suggestion.txt", "w") as f:
+            with open("Results/Suggestion.txt", "w") as f:
                 print(conclusion_string, file=f)
                 print('', file=f)
     else:
@@ -334,41 +337,41 @@ def get_recommendations(focus_properties_df):
     # Maybe check where the biggest cost savings could be between water, heating, etc
     # focus_properties_df_single_glazed =
     glazing_rec = focus_properties_df.loc[focus_properties_df.windows_description=='Single glazed']['address'].values
-    with open("Recommendations.txt", "w") as f:
+    with open("Results/Recommendations.txt", "w") as f:
         print('Only single glazing in:', file=f)
         print('{}'.format(glazing_rec), file=f)
         print('Consider double or triple glazing for greater efficiency', file=f)
         print(' ', file=f)
 
     walls_rec = focus_properties_df.loc[focus_properties_df.walls_description.str.contains('no insulation')]['address'].values
-    with open("Recommendations.txt", "a") as f:
+    with open("Results/Recommendations.txt", "a") as f:
         print('Walls not insulated in:', file=f)
         print('{}'.format(walls_rec), file=f)
         print('Consider insulating walls for greater efficiency', file=f)
         print(' ', file=f)
 
     heatpump_rec = focus_properties_df.loc[~focus_properties_df.mainheat_description.str.contains('heat pump')]['address'].values
-    with open("Recommendations.txt", "a") as f:
+    with open("Results/Recommendations.txt", "a") as f:
         print('No heat pumps in:', file=f)
         print('{}'.format(heatpump_rec), file=f)
         print('Consider installing heat pumps for greater efficiency', file=f)
         print(' ', file=f)
 
     lighting_rec = focus_properties_df.loc[~focus_properties_df.lighting_description.isin(['Low energy lighting in all fixed outlets'])]['address'].values
-    with open("Recommendations.txt", "a") as f:
+    with open("Results/Recommendations.txt", "a") as f:
         print('Some low energy lighting in:', file=f)
         print('{}'.format(lighting_rec), file=f)
         print('Consider low energy light sources throughout', file=f)
         print(' ', file=f)
 
     floor_rec = focus_properties_df.loc[focus_properties_df.floor_description.str.contains('no insulation')]['address'].values
-    with open("Recommendations.txt", "a") as f:
+    with open("Results/Recommendations.txt", "a") as f:
         print('No floor insulation in:', file=f)
         print('{}'.format(floor_rec), file=f)
         print('Consider installing floor insulation for greater efficiency', file=f)
         print(' ', file=f)
 
-    f = open("Recommendations.txt", "r")
+    f = open("Results/Recommendations.txt", "r")
 
     return f
 
@@ -462,9 +465,9 @@ def make_cost_savings_report(epc_data, *positional_parameters, **keyword_paramet
     pdf.cell(40,10, 'Your Potential Portfolio Energy Efficiency')
     pdf.ln(10)
     ypos = pdf.get_y()
-    pdf.image('current_energy_efficiency Portfolio Map.png', w=90, x=23)
+    pdf.image('Results/current_energy_efficiency Portfolio Map.png', w=90, x=23)
     pdf.set_y(ypos)
-    pdf.image('potential_energy_efficiency Portfolio Map.png', w=90, x=115)
+    pdf.image('Results/potential_energy_efficiency Portfolio Map.png', w=90, x=115)
     pdf.ln(5)
     pdf.set_font('Arial','', 10)
     pdf.cell(0, 4, 'Improving energy efficiency is directly related to cost savings, as shown on the scatter plot.')
@@ -474,11 +477,11 @@ def make_cost_savings_report(epc_data, *positional_parameters, **keyword_paramet
     pdf.cell(0, 4, 'To make these changes most efficiently, it is helpful to view a cumulative plot to determine where to start:')
     pdf.ln(10)
     ypos = pdf.get_y()
-    pdf.image('potential_energy_efficiency_difference vs potential_cost_saved Scatter Plot.png', w=60)
+    pdf.image('Results/potential_energy_efficiency_difference vs potential_cost_saved Scatter Plot.png', w=60)
     pdf.set_y(ypos)
-    pdf.image('Cumulative Feature Plot.png', w=130, x=70)
+    pdf.image('Results/Cumulative Feature Plot.png', w=130, x=70)
     pdf.ln(5)
-    f = open("Suggestion.txt", "r")
+    f = open("Results/Suggestion.txt", "r")
     pdf.cell(0, 4, txt=f.read())
     pdf.add_page()
     pdf.set_font('Arial','B', 14)
@@ -486,7 +489,7 @@ def make_cost_savings_report(epc_data, *positional_parameters, **keyword_paramet
     pdf.set_font('Arial','', 10)
     pdf.set_x(30)
     pdf.ln(10)
-    f = open("Recommendations.txt", "r")
+    f = open("Results/Recommendations.txt", "r")
     for x in f:
         pdf.cell(10,0,'')
         pdf.cell(0, 6, txt = x, ln = 1)
