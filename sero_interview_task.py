@@ -62,6 +62,7 @@ def clean_epc_data(epc_data):
     cleaned_epc_data = copy.deepcopy(epc_data)
     cleaned_epc_data.columns = cleaned_epc_data.columns.str.replace('-', '_')
     cleaned_epc_data['full_address'] = cleaned_epc_data['address']+', '+cleaned_epc_data['postcode']
+    cleaned_epc_data['uprn'] = cleaned_epc_data['uprn'].astype('str')
 
     return cleaned_epc_data
 
@@ -74,9 +75,9 @@ def view_portfolio_map(cleaned_epc_data, energy_efficiency_col, *positional_para
     INPUTS:
         - cleaned_epc_data: The epc_data dataframe that has been cleaned using
                 the clean_epc_data function
-        - energy_rating_col: The column in the cleaned_epc_data dataframe that
-                describes the energy rating you want to visualise. It will be
-                either 'current_energy_rating' or 'potential_energy_rating'
+        - energy_efficiency_col: The column in the cleaned_epc_data dataframe that
+                describes the energy efficiency you want to visualise. It will be
+                either 'current_energy_efficiency' or 'potential_energy_efficiency'
                 depending on what you want to visualise
 
     OUTPUT:
@@ -88,7 +89,8 @@ def view_portfolio_map(cleaned_epc_data, energy_efficiency_col, *positional_para
     with urlopen('https://raw.githubusercontent.com/thomasvalentine/Choropleth/main/Local_Authority_Districts_(December_2021)_GB_BFC.json') as response:
         local_authorities = json.load(response)
 
-    # I want to add in a test here for the energy efficiency col!
+    if energy_efficiency_col not in ['current_energy_efficiency', 'potential_energy_efficiency']:
+        raise ValueError('The energy_efficiency_col needs needs to be current_energy_efficiency or potential_energy_efficiency')
 
     fig = px.choropleth_mapbox(
                                cleaned_epc_data,
@@ -240,6 +242,7 @@ def plot_scatter(cleaned_epc_data, x, y, hue, *positional_parameters, **keyword_
 
     if ('save' in keyword_parameters.keys()):
         if keyword_parameters['save'] is True:
+            plt.close()
             fig.savefig('Results/{} vs {} Scatter Plot.png'.format(x, y))
 
 def property_focus_feature_analysis(
@@ -313,6 +316,7 @@ def property_focus_feature_analysis(
     fig = ax.get_figure()
     if ('save' in keyword_parameters.keys()):
         if keyword_parameters['save'] is True:
+            plt.close()
             fig.savefig('Results/Cumulative Feature Plot', bbox_inches='tight')
 
     # Calculating the percentage of properties that correspond to the percentage
